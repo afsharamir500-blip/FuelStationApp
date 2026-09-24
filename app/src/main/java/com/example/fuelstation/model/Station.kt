@@ -2,14 +2,15 @@ package com.example.fuelstation.model
 
 /**
  * مدل داده‌ی یک جایگاه سوخت.
- * pricePerLiter بر حسب تومان است.
+ * fuelPrices: نگاشت نوع سوخت به قیمت هر لیتر (تومان)
+ * pumpCount: تعداد پمپ‌های موجود در جایگاه
  */
 data class Station(
-    val stationNumber: String,   // شماره جایگاه (مثلاً: 12345)
-    val name: String,            // نام جایگاه
-    val address: String,         // آدرس / منطقه
+    val stationNumber: String,
+    val name: String,
+    val address: String,
     val latitude: Double,
     val longitude: Double,
-    val pricePerLiterToman: Long, // قیمت هر لیتر به تومان
-    val fuelType: String          // نوع سوخت: بنزین سوپر / معمولی / گازوئیل
+    val pumpCount: Int,
+    val fuelPrices: Map<String, Long>
 )
