@@ -2,15 +2,18 @@ package com.example.fuelstation.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.fuelstation.databinding.ActivityPaymentBinding
+import com.example.fuelstation.model.StationRepository
 import java.util.UUID
 
 class PaymentActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPaymentBinding
-    private var pricePerLiter: Long = 0
+    private var currentPricePerLiter: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -18,17 +21,38 @@ class PaymentActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val stationNumber = intent.getStringExtra("station_number") ?: ""
-        val stationName = intent.getStringExtra("station_name") ?: ""
-        pricePerLiter = intent.getLongExtra("price_per_liter", 0)
+        val station = StationRepository.getStationByNumber(stationNumber)
 
-        binding.tvStationInfo.text = "جایگاه: $stationName (شماره $stationNumber)"
-        binding.tvPricePerLiter.text = "قیمت هر لیتر: ${"%,d".format(pricePerLiter)} تومان"
-
-        binding.etLiters.addTextChangedListener {
-            val liters = binding.etLiters.text.toString().toDoubleOrNull() ?: 0.0
-            val total = (liters * pricePerLiter).toLong()
-            binding.tvTotal.text = "مبلغ قابل پرداخت: ${"%,d".format(total)} تومان"
+        if (station == null) {
+            Toast.makeText(this, "جایگاه پیدا نشد", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
+
+        binding.tvStationInfo.text = "جایگاه: ${station.name} (شماره ${station.stationNumber})"
+
+        // پمپ‌ها
+        val pumpNumbers = (1..station.pumpCount).map { "پمپ شماره $it" }
+        binding.spPump.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pumpNumbers)
+
+        // نوع سوخت (نازل)
+        val fuelTypes = station.fuelPrices.keys.toList()
+        binding.spFuelType.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, fuelTypes)
+
+        currentPricePerLiter = station.fuelPrices[fuelTypes.first()] ?: 0
+        updatePriceLabel()
+
+        binding.spFuelType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val selectedFuel = fuelTypes[position]
+                currentPricePerLiter = station.fuelPrices[selectedFuel] ?: 0
+                updatePriceLabel()
+                recalcTotal()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        binding.etLiters.addTextChangedListener { recalcTotal() }
 
         binding.btnConfirmPay.setOnClickListener {
             val liters = binding.etLiters.text.toString().toDoubleOrNull()
@@ -36,33 +60,41 @@ class PaymentActivity : AppCompatActivity() {
                 Toast.makeText(this, "لطفاً مقدار لیتر را صحیح وارد کنید", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val total = (liters * pricePerLiter).toLong()
-            startPaymentGateway(stationNumber, stationName, liters, total)
+            val total = (liters * currentPricePerLiter).toLong()
+            val pumpLabel = pumpNumbers[binding.spPump.selectedItemPosition]
+            val fuelLabel = fuelTypes[binding.spFuelType.selectedItemPosition]
+            startPaymentGateway(station.stationNumber, station.name, liters, total, pumpLabel, fuelLabel)
         }
     }
 
-    /**
-     * TODO: این تابع باید به درگاه پرداخت واقعی (مثلاً زرین‌پال / آی‌دی‌پی) وصل شود:
-     * 1) درخواست ایجاد تراکنش با Merchant ID خود به سرور PSP بفرستید.
-     * 2) کاربر را به صفحه پرداخت درگاه (WebView یا مرورگر) هدایت کنید.
-     * 3) پس از بازگشت، نتیجه تراکنش (کد پیگیری) را از سرور خودتان verify کنید.
-     * فعلاً برای نمایش ساختار برنامه، پرداخت به‌صورت شبیه‌سازی‌شده انجام و رسید تولید می‌شود.
-     */
-    private fun startPaymentGateway(stationNumber: String, stationName: String, liters: Double, total: Long) {
-        val trackingCode = UUID.randomUUID().toString().take(10).uppercase()
+    private fun updatePriceLabel() {
+        binding.tvPricePerLiter.text = "قیمت هر لیتر: ${"%,d".format(currentPricePerLiter)} تومان"
+    }
 
+    private fun recalcTotal() {
+        val liters = binding.etLiters.text.toString().toDoubleOrNull() ?: 0.0
+        val total = (liters * currentPricePerLiter).toLong()
+        binding.tvTotal.text = "مبلغ قابل پرداخت: ${"%,d".format(total)} تومان"
+    }
+
+    private fun startPaymentGateway(
+        stationNumber: String, stationName: String, liters: Double, total: Long,
+        pumpLabel: String, fuelLabel: String
+    ) {
+        val trackingCode = UUID.randomUUID().toString().take(10).uppercase()
         val intent = Intent(this, ReceiptActivity::class.java)
         intent.putExtra("station_number", stationNumber)
         intent.putExtra("station_name", stationName)
         intent.putExtra("liters", liters)
         intent.putExtra("total", total)
         intent.putExtra("tracking_code", trackingCode)
+        intent.putExtra("pump_label", pumpLabel)
+        intent.putExtra("fuel_label", fuelLabel)
         startActivity(intent)
         finish()
     }
 }
 
-// Extension برای ساده‌سازی TextWatcher
 private inline fun android.widget.EditText.addTextChangedListener(crossinline onChanged: () -> Unit) {
     this.addTextChangedListener(object : android.text.TextWatcher {
         override fun afterTextChanged(s: android.text.Editable?) = onChanged()
