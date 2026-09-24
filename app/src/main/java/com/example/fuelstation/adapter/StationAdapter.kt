@@ -24,7 +24,11 @@ class StationAdapter(
         holder.binding.tvStationNumber.text = "شماره جایگاه: ${station.stationNumber}"
         holder.binding.tvStationName.text = station.name
         holder.binding.tvStationAddress.text = station.address
-        holder.binding.tvPrice.text = "قیمت هر لیتر: ${"%,d".format(station.pricePerLiterToman)} تومان (${station.fuelType})"
+
+        val priceSummary = station.fuelPrices.entries.joinToString(" | ") {
+            "${it.key}: ${"%,d".format(it.value)} ت"
+        }
+        holder.binding.tvPrice.text = "تعداد پمپ: ${station.pumpCount}\n$priceSummary"
 
         holder.binding.btnPay.setOnClickListener { onPayClick(station) }
     }
