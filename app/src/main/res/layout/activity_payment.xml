@@ -13,10 +13,32 @@
         android:textStyle="bold" />
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="انتخاب پمپ" />
+
+    <Spinner
+        android:id="@+id/spPump"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="نوع سوخت (نازل)" />
+
+    <Spinner
+        android:id="@+id/spFuelType"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <TextView
         android:id="@+id/tvPricePerLiter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="12dp" />
 
     <EditText
         android:id="@+id/etLiters"
